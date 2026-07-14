@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Generation Models are General-Purpose Vision Learners</title>
+    <meta name="description" content="GenCeption: repurposing a text-to-video generative diffusion model into a single feed-forward, general-purpose vision model steered by text instructions.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://genception.github.io/">
+    <meta property="og:title" content="Video Generation Models are General-Purpose Vision Learners">
+    <meta property="og:description" content="GenCeption: one unified, feed-forward vision model built on video generative pretraining — depth, normals, pose, segmentation, keypoints & 4D grounding with SOTA performance, steered by text instructions.">
+    <meta property="og:image" content="https://genception.github.io/assets/og_card.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Video Generation Models are General-Purpose Vision Learners">
+    <meta name="twitter:description" content="GenCeption: one unified, feed-forward vision model built on video generative pretraining — depth, normals, pose, segmentation, keypoints & 4D grounding, steered by text instructions.">
+    <meta name="twitter:image" content="https://genception.github.io/assets/og_card.jpg">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        .icon { display: block; width: 1em; height: 1em; fill: currentColor; }
+
+        body {
+            font-family: 'Google Sans', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 960px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background-color: #fff;
+        }
+        h1, h2 { color: #202124; text-align: center; font-weight: 500; }
+        h1 { font-size: 2.4em; margin-bottom: 0.3em; line-height: 1.2; }
+        h2 { font-size: 1.8em; margin-top: 1.5em; margin-bottom: 1em; }
+        .model-name { color: #1a73e8; }
+
+        .conference {
+            text-align: center; font-size: 1.4em; margin-bottom: 30px;
+            color: #1a73e8; font-weight: 500;
+        }
+        .authors {
+            text-align: center; margin-bottom: 10px; font-size: 1.05em; color: #3c4043;
+        }
+        .authors span { display: inline-block; margin: 0 5px; white-space: nowrap; }
+        .affiliations {
+            text-align: center; font-size: 0.9em; margin-bottom: 30px; color: #5f6368;
+        }
+
+        .links { text-align: center; margin-bottom: 30px; }
+        .links a {
+            display: inline-block; margin: 0 8px 8px; padding: 10px 22px;
+            background-color: #1a73e8; color: white; text-decoration: none;
+            border-radius: 8px; transition: background-color 0.3s, box-shadow 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-weight: 500;
+        }
+        .links a:hover { background-color: #185abc; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .links .link-soon {
+            display: inline-block; margin: 0 8px 8px; padding: 10px 22px;
+            background-color: #e8eaed; color: #5f6368; border-radius: 8px; font-weight: 500;
+            cursor: default; user-select: none;
+        }
+
+        .teaser { margin: 0 auto 30px; }
+        .teaser img { display: block; width: 100%; height: auto; border-radius: 16px; }
+        .teaser .caption { font-size: 0.85em; color: #5f6368; text-align: center; margin-top: 12px; }
+
+        video { width: 100%; display: block; border-radius: 20px; }
+
+        .card {
+            background-color: rgba(248, 249, 250, 1);
+            padding: 30px; border-radius: 30px; margin-bottom: 30px;
+            border: 1px solid #e8eaed;
+        }
+        .card h2 { margin-top: 0; text-align: left; font-size: 1.5em; }
+        .card p { text-align: justify; font-size: 0.95em; }
+        .card p.center { text-align: center; }
+
+        .fig-container {
+            background-color: #fff; padding: 12px; border-radius: 20px;
+            border: 1px solid #e8eaed; margin-bottom: 15px; box-sizing: border-box;
+        }
+        .fig-container img { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+        .fig-caption { font-size: 0.85em; color: #5f6368; text-align: left; margin: 0 4px; }
+
+        /* Placeholder box for the video we'll add later */
+        .video-placeholder {
+            position: relative; width: 100%; aspect-ratio: 16 / 9;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 12px; border-radius: 16px; color: #5f6368;
+            background: repeating-linear-gradient(45deg, #f1f3f4, #f1f3f4 12px, #e8eaed 12px, #e8eaed 24px);
+            border: 2px dashed #c6c9cc; font-weight: 500;
+        }
+        .video-placeholder .play {
+            width: 56px; height: 56px; border-radius: 50%; background: #1a73e8; color: #fff;
+            display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        .video-placeholder .play svg { width: 22px; height: 22px; margin-left: 3px; }
+
+        ul.principles { font-size: 0.95em; padding-left: 1.2em; }
+        ul.principles li { margin-bottom: 8px; }
+
+        .citation pre {
+            white-space: pre-wrap; word-wrap: break-word; background-color: #fff;
+            padding: 20px; border-radius: 20px; overflow-x: auto; border: 1px solid #e8eaed;
+            font-size: 0.85em; color: #3c4043;
+        }
+        sup { line-height: 0; font-size: 75%; }
+
+        .two-col { display: flex; gap: 12px; }
+        .two-col > div { flex: 1; min-width: 0; }
+
+        .collapsible h2 {
+            cursor: pointer; user-select: none; position: relative; padding-right: 25px;
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 0;
+        }
+        .collapsible.active h2 { margin-bottom: 1em; }
+        .collapsible h2::after {
+            content: '›'; font-size: 2em; font-weight: 500; position: absolute; right: 0; top: 52%;
+            transform: translateY(-50%) rotate(0deg); line-height: 1;
+            transition: transform 0.2s ease-out; color: #5f6368;
+        }
+        .collapsible.active h2::after { transform: translateY(-50%) rotate(90deg); }
+        .collapsible .collapsible-content { display: none; }
+        .collapsible.active .collapsible-content { display: block; }
+
+        /* Video Any-Task Capabilities gallery */
+        .demo-thumbs {
+            display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; justify-content: center;
+        }
+        .demo-thumb {
+            padding: 0; border: 3px solid transparent; border-radius: 8px; cursor: pointer;
+            background: #fff; overflow: hidden; line-height: 0;
+            transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12); flex: 0 0 auto;
+        }
+        .demo-thumb img { width: 168px; height: auto; display: block; }
+        .demo-thumb:hover:not(.selected) { transform: scale(1.04); box-shadow: 0 3px 8px rgba(0,0,0,0.2); }
+        .demo-thumb.selected { border-color: #1a73e8; box-shadow: 0 3px 8px rgba(0,0,0,0.2); }
+
+        /* Overview heading + sound toggle */
+        .overview-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+        #teaser-mute {
+            background: #1a73e8; color: #fff; border: none; border-radius: 50%;
+            width: 34px; height: 34px; font-size: 15px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; padding: 0; flex-shrink: 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: background 0.2s, box-shadow 0.2s;
+        }
+        #teaser-mute:hover { background: #185abc; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+
+        /* TL;DR takeaway columns (inside one gray card) */
+        .takeaways { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; margin: 0; }
+        .takeaway { padding: 0; }
+        .takeaway h3 {
+            margin: 0 0 8px; font-size: 0.78em; font-weight: 700;
+            letter-spacing: 0.08em; text-transform: uppercase; color: #1a73e8; text-align: left;
+        }
+        .takeaway p { margin: 0; font-size: 0.9em; color: #3c4043; text-align: left; }
+
+        /* Keypoint gallery (main player + preview thumbnails) */
+        .kp-thumbs { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; justify-content: center; }
+        .kp-thumb { padding: 0; border: none; background: none; cursor: pointer; flex: 1 1 160px; min-width: 0; font-family: inherit; }
+        .kp-thumb img {
+            width: 100%; display: block; border-radius: 8px; border: 3px solid transparent;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12); box-sizing: border-box;
+            transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+        }
+        .kp-thumb:hover:not(.selected) img { transform: scale(1.04); box-shadow: 0 3px 8px rgba(0,0,0,0.2); }
+        .kp-thumb.selected img { border-color: #1a73e8; }
+        .kp-thumb-label { display: block; font-size: 0.72em; color: #5f6368; margin-top: 5px; line-height: 1.25; }
+        .kp-thumb.selected .kp-thumb-label { color: #1a73e8; font-weight: 500; }
+        .thumbs-sm .kp-thumb { flex: 0 0 auto; width: 190px; }
+
+        /* Results tabs */
+        .rtabs { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 2px 0 16px; }
+        .rtab {
+            padding: 8px 16px; border: 2px solid #1a73e8; border-radius: 8px; cursor: pointer;
+            background: #1a73e8; color: #fff; font-weight: 500; font-size: 0.9em; font-family: inherit;
+            transition: background 0.2s, color 0.2s, box-shadow 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .rtab:hover:not(.selected) { background: #185abc; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+        .rtab.selected { background: #fff; color: #1a73e8; }
+        .rpanel { display: none; }
+        .rpanel.active { display: block; }
+
+        @media (max-width: 600px) {
+            .rtab { padding: 7px 11px; font-size: 0.8em; }
+            .kp-thumb { flex-basis: calc(50% - 5px); }
+            .takeaways { grid-template-columns: 1fr; gap: 10px; }
+            .takeaways { grid-template-columns: 1fr; gap: 10px; }
+            .takeaway { padding: 18px; }
+            .demo-thumb img { width: 104px; }
+            body { margin: 20px auto; padding: 0 15px; }
+            h1 { font-size: 1.5em; }
+            h2 { font-size: 1.4em; }
+            .conference { font-size: 1.2em; }
+            .authors { font-size: 0.8em; }
+            .authors span { margin: 0 3px; }
+            .affiliations { font-size: 0.72em; }
+            .links a { padding: 8px 16px; }
+            .card { padding: 20px; border-radius: 20px; }
+            .card h2 { font-size: 1.3em; }
+            .card p, ul.principles { font-size: 0.88em; }
+            .citation pre { padding: 15px; font-size: 0.78em; }
+            .two-col { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============ HERO ============ -->
+    <h1>Video Generation Models are<br>General-Purpose Vision Learners</h1>
+
+    <div class="authors">
+        <span><a href="https://letian-wang.github.io/" style="color: inherit; text-decoration: none">Letian Wang</a><sup>1,2</sup></span>
+        <span><a href="https://chuhanxx.github.io/" style="color: inherit; text-decoration: none">Chuhan Zhang</a><sup>1</sup></span>
+        <span><a href="https://scholar.google.com/citations?user=NVD-BU4AAAAJ&hl=en" style="color: inherit; text-decoration: none">Rishabh Kabra</a><sup>1,3</sup></span>
+        <span><a href="https://scholar.google.com/citations?user=jInmtEkAAAAJ&hl=en" style="color: inherit; text-decoration: none">Jasper Uijlings</a><sup>1</sup></span>
+        <span><a href="https://scholar.google.com/citations?user=jY_Bcd8AAAAJ&hl=en" style="color: inherit; text-decoration: none">Steven Waslander</a><sup>2</sup></span>
+        <span><a href="https://scholar.google.com/citations?user=UZ5wscMAAAAJ&hl=en" style="color: inherit; text-decoration: none">Andrew Zisserman</a><sup>1,4</sup></span>
+        <span><a href="https://scholar.google.com/citations?user=IUZ-7_cAAAAJ&hl=en" style="color: inherit; text-decoration: none">Joao Carreira</a><sup>1</sup></span>
+        <span><a href="https://people.csail.mit.edu/kaiming/" style="color: inherit; text-decoration: none">Kaiming He</a><sup>1,5</sup></span>
+        <span><a href="https://scholar.google.com/citations?user=6rl-XhwAAAAJ&hl=en" style="color: inherit; text-decoration: none">Misha Andriluka</a><sup>1</sup></span>
+        <span><a href="https://scholar.google.com/citations?user=1PZUz5AAAAAJ&hl=en" style="color: inherit; text-decoration: none">Eduard Gabriel Bazavan</a><sup>1</sup></span>
+        <span><a href="https://scholar.google.com/citations?user=8lmzWycAAAAJ&hl=en" style="color: inherit; text-decoration: none">Andrei Zanfir</a><sup>1</sup></span>
+        <span><a href="https://sminchisescu.com/" style="color: inherit; text-decoration: none">Cristian Sminchisescu</a><sup>1,6,*</sup></span>
+    </div>
+    <div class="affiliations">
+        <sup>1</sup>Google DeepMind &nbsp;&nbsp; <sup>2</sup>University of Toronto &nbsp;&nbsp; <sup>3</sup>University College London &nbsp;&nbsp; <sup>4</sup>University of Oxford &nbsp;&nbsp; <sup>5</sup>MIT &nbsp;&nbsp; <sup>6</sup>Lund University
+        <br>
+        <sup>*</sup>Work done while at Google DeepMind.
+    </div>
+
+    <div class="conference">ECCV 2026</div>
+
+    <div class="links">
+        <a href="assets/paper.pdf">pdf</a>
+        <a href="https://arxiv.org/abs/2607.09024">arXiv</a>
+        <a href="https://x.com/Letian_Wang_6/status/2076646900745277622" target="_blank" rel="noopener">Twitter</a>
+        <span class="link-soon" title="Code release to be announced">Code (TBA)</span>
+    </div>
+
+    <!-- ============ OVERVIEW (teaser video) ============ -->
+    <div class="card">
+        <div class="overview-head">
+            <h2 style="margin:0;">Overview</h2>
+            <button id="teaser-mute" aria-label="Toggle sound" title="Turn sound on/off">
+                <svg class="icon ico-muted" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" aria-hidden="true"><path fill="currentColor" d="M301.1 34.8C312.6 40 320 51.4 320 64V448c0 12.6-7.4 24-18.9 29.2s-25 3.1-34.4-5.3L131.8 352H64c-35.3 0-64-28.7-64-64V224c0-35.3 28.7-64 64-64h67.8L266.7 40.1c9.4-8.4 22.9-10.4 34.4-5.3zM425 167l55 55 55-55c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9l-55 55 55 55c9.4 9.4 9.4 24.6 0 33.9s-24.6 9.4-33.9 0l-55-55-55 55c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9l55-55-55-55c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0z"/></svg>
+                <svg class="icon ico-on" style="display:none;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512" aria-hidden="true"><path fill="currentColor" d="M533.6 32.5C598.5 85.2 640 165.8 640 256s-41.5 170.7-106.4 223.5c-10.3 8.4-25.4 6.8-33.8-3.5s-6.8-25.4 3.5-33.8C557.5 398.2 592 331.2 592 256s-34.5-142.2-88.7-186.3c-10.3-8.4-11.8-23.5-3.5-33.8s23.5-11.8 33.8-3.5zM473.1 107c43.2 35.2 70.9 88.9 70.9 149s-27.7 113.8-70.9 149c-10.3 8.4-25.4 6.8-33.8-3.5s-6.8-25.4 3.5-33.8C475.3 341.3 496 301.1 496 256s-20.7-85.3-53.2-111.8c-10.3-8.4-11.8-23.5-3.5-33.8s23.5-11.8 33.8-3.5zm-60.5 74.5C434.1 199.1 448 225.9 448 256s-13.9 56.9-35.4 74.5c-10.3 8.4-25.4 6.8-33.8-3.5s-6.8-25.4 3.5-33.8C393.1 284.4 400 271 400 256s-6.9-28.4-17.7-37.3c-10.3-8.4-11.8-23.5-3.5-33.8s23.5-11.8 33.8-3.5zM301.1 34.8C312.6 40 320 51.4 320 64V448c0 12.6-7.4 24-18.9 29.2s-25 3.1-34.4-5.3L131.8 352H64c-35.3 0-64-28.7-64-64V224c0-35.3 28.7-64 64-64h67.8L266.7 40.1c9.4-8.4 22.9-10.4 34.4-5.3z"/></svg>
+            </button>
+        </div>
+        <video id="teaser-video" controls disablepictureinpicture autoplay muted playsinline preload="auto"
+               poster="assets/teaser_video.jpg" style="width:100%; display:block; border-radius:12px;">
+            <source src="assets/teaser_video.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+    </div>
+
+    <!-- ============ TL;DR ============ -->
+    <div class="card">
+        <h2>TL;DR</h2>
+        <p style="margin-top:-2px; margin-bottom:12px; font-size:1.02em; font-weight:500; color:#202124;">Pushing computer vision from the task-specific era toward general-purpose visual intelligence — just as NLP evolved from task-specific models into general-purpose language intelligence.</p>
+        <p style="margin-top:0; margin-bottom:22px;"><span class="model-name">GenCeption</span> repurposes a pre-trained video generative model into a single unified, general-purpose, feed-forward vision model that solves a wide range of vision tasks with SOTA performance — all steered by text instructions, with exceptional learning efficiency and intriguing emergent behaviors.</p>
+        <div class="takeaways">
+        <div class="takeaway">
+            <h3>Visual Generative Pretraining</h3>
+            <p><span class="model-name">GenCeption</span> leverages video generation models as representation pretraining, and conducts multi-task post-training in a unified architecture.</p>
+        </div>
+        <div class="takeaway">
+            <h3>Unified &amp; Feed-Forward</h3>
+            <p><span class="model-name">GenCeption</span> handles both dense and sparse vision tasks, transforming the multi-step generative backbone into a single-step feed-forward model.</p>
+        </div>
+        <div class="takeaway">
+            <h3>SOTA &amp; Emergent</h3>
+            <p><span class="model-name">GenCeption</span> is a SOTA unified model on various vision tasks, with exceptional learning efficiency and intriguing emerging behaviors.</p>
+        </div>
+        </div>
+    </div>
+
+    <!-- ============ METHOD ============ -->
+    <div class="card method">
+        <h2>Methodology</h2>
+        <div class="fig-container">
+            <div class="two-col" style="align-items:center; gap:16px;">
+                <div style="flex-grow:1127;">
+                    <video controls disablepictureinpicture autoplay muted loop playsinline preload="auto" style="width:100%; display:block; border-radius:8px;">
+                        <source src="assets/methodology_anim.mp4" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+                <div style="flex-grow:806;">
+                    <img src="assets/paradigm_shift.png" alt="Specialized vision models use separate per-task heads, backbones, or losses, whereas GenCeption's unified vision model uses a single head and backbone across all tasks, steered by a task prompt." style="width:100%; display:block; border-radius:8px;">
+                </div>
+            </div>
+        </div>
+        <p class="fig-caption"><b>Methodology.</b> <span class="model-name">GenCeption</span> leverages a video generative diffusion model as a <i>pre-training</i> base to capture rich spatio-temporal world priors and native vision-language alignment at scale. During multi-task <i>post-training</i>, the model is adapted to a feed-forward model fine-tuned on predominantly synthetic data to handle diverse perception tasks. <span class="model-name">GenCeption</span> shows strong performance on multiple vision tasks with intriguing <i>Emerging Behaviors</i>, enabling seamless sim-to-real transfer and generalization to out-of-distribution object categories.</p>
+        <p class="fig-caption"><b>Paradigm Shift.</b> This highlights a paradigm shift from specialized, task-specific computer vision models toward fully unified, generalist vision models — just as NLP evolved from task-specific models into general-purpose language intelligence.</p>
+    </div>
+
+    <!-- ============ TEASER (hidden for now) ============ -->
+    <!--
+    <div class="teaser">
+        <img src="assets/teaser.png" alt="GenCeption qualitative results: from a single RGB video and a text prompt, the model predicts surface normals, depth, foreground segmentation and 3D human keypoints in a single feed-forward pass, across real humans, synthetic renders, animals and robots.">
+        <div class="caption">Steered by text instructions, <span class="model-name">GenCeption</span> is capable of a wide spectrum of perception tasks, each with one feed-forward pass of the model — depth, surface-normal and camera-pose estimation, foreground and expression-referring open-world segmentation, and 2D/3D keypoint prediction — all under a single, task-agnostic architecture.</div>
+    </div>
+    -->
+
+    <!-- ============ RESULTS ============ -->
+    <div class="card results">
+        <h2>Results</h2>
+        <div class="fig-container">
+            <div class="two-col" style="align-items:center; gap:18px;">
+                <div style="flex-grow:1155;">
+                    <img src="assets/results_sota.png" alt="Radar chart: GenCeption (specialist and generalist) matches or outperforms specialized state-of-the-art models across depth, surface normal, camera pose, segmentation and keypoint tasks." style="width:100%; display:block;">
+                </div>
+                <div style="flex-grow:1429;">
+                    <img src="assets/results_efficiency.png" alt="Data-efficiency plot: GenCeption reaches accuracy comparable to models trained on far more data, using 7x to 500x fewer training frames." style="width:100%; display:block;">
+                </div>
+            </div>
+        </div>
+        <p class="fig-caption"><b>SOTA performance:</b> <span class="model-name">GenCeption</span> is competitive with or outperforms state-of-the-art models dedicated to individual tasks (DepthAnything3, D4RT, VGGT-&Omega;, SAM3, Sapiens, DAVID, Genmo, Lotus-2). Our <i>specialist</i> denotes a model trained on each task individually, whereas the <i>generalist</i> represents a single model trained jointly across multiple tasks.</p>
+        <p class="fig-caption"><b>Data efficiency:</b> under matched fine-tuning data, the video-generative backbone beats alternative pre-training paradigms (V-JEPA, VideoMAE V2), shows preliminary scaling properties, where it improves with larger models and more data, and reaches performance comparable to D4RT and VGGT-&Omega; with 7&times; to 500&times; less training data.</p>
+    </div>
+
+    <!-- ============ OVERVIEW VIDEO (placeholder) ============ -->
+    <!--
+      To add the real video, replace the .video-placeholder div below with:
+        <video controls playsinline poster="assets/overview_poster.jpg">
+          <source src="assets/overview.mp4" type="video/mp4">
+        </video>
+      Put the file in assets/ (or use a hosted URL for large videos).
+    -->
+    <!--
+    <div class="card">
+        <h2>Overview Video</h2>
+        <div class="video-placeholder">
+            <div class="play"><svg viewBox="0 0 320 512" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M361 215C375.3 223.8 384 239.3 384 256s-8.7 32.2-23 41L73 473c-14.8 9.1-33.4 9.4-48.5.9S0 449.4 0 432V80c0-17.4 9.5-33.4 24.5-41.9S57.2 30 73 39l288 176z"/></svg></div>
+            <div>Overview video — coming soon</div>
+        </div>
+    </div>
+    -->
+
+    <!-- ============ ARCHITECTURE ============ -->
+    <div class="card">
+        <h2>Architecture</h2>
+        <div class="fig-container">
+            <video controls disablepictureinpicture autoplay muted loop playsinline preload="auto" style="width:100%; display:block; border-radius:12px;">
+                <source src="assets/architecture.mp4" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+        <p class="fig-caption">Architecture overview of <span class="model-name">GenCeption</span>, a simple yet powerful architecture adapted from text-to-video diffusion models. Given an input video and a text prompt specifying the desired output, our unified model, trained majorly on synthetic data, is capable of performing a wide range of dense and sparse perception tasks, with a single forward-pass of the model. The dense vision tasks are unified in the RGB ambient space where supervision can be applied in latent space efficiently, and the sparse vision tasks are realized by adding learnable tokens as additional inputs to the diffusion transformer (DiT).</p>
+    </div>
+
+    <!-- ============ VIDEO ANY-TASK CAPABILITIES ============ -->
+    <div class="card">
+        <h2>Video Any-Task Capabilities</h2>
+        <p style="margin-top:-2px;"><span class="model-name">GenCeption</span> is able to seamlessly switch between different vision tasks, just like how humans do in real life.</p>
+        <div class="fig-container" style="padding:0; overflow:hidden;">
+            <video id="demo-video" controls disablepictureinpicture autoplay muted loop playsinline preload="auto"
+                   poster="assets/demos/thumb01.jpg" style="width:100%; display:block; border-radius:0;">
+                <source id="demo-source" src="assets/demos/demo01.mp4" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+        <div class="demo-thumbs" id="demo-thumbs">
+            <button class="demo-thumb selected" data-src="assets/demos/demo01.mp4" data-poster="assets/demos/thumb01.jpg" aria-label="Example 1"><img src="assets/demos/thumb01.jpg" alt="Example 1"></button>
+            <button class="demo-thumb" data-src="assets/demos/demo02.mp4" data-poster="assets/demos/thumb02.jpg" aria-label="Example 2"><img src="assets/demos/thumb02.jpg" alt="Example 2"></button>
+            <button class="demo-thumb" data-src="assets/demos/demo03.mp4" data-poster="assets/demos/thumb03.jpg" aria-label="Example 3"><img src="assets/demos/thumb03.jpg" alt="Example 3"></button>
+            <button class="demo-thumb" data-src="assets/demos/demo04.mp4" data-poster="assets/demos/thumb04.jpg" aria-label="Example 4"><img src="assets/demos/thumb04.jpg" alt="Example 4"></button>
+            <button class="demo-thumb" data-src="assets/demos/demo05.mp4" data-poster="assets/demos/thumb05.jpg" aria-label="Example 5"><img src="assets/demos/thumb05.jpg" alt="Example 5"></button>
+            <button class="demo-thumb" data-src="assets/demos/demo06.mp4" data-poster="assets/demos/thumb06.jpg" aria-label="Example 6"><img src="assets/demos/thumb06.jpg" alt="Example 6"></button>
+            <button class="demo-thumb" data-src="assets/demos/demo07.mp4" data-poster="assets/demos/thumb07.jpg" aria-label="Example 7"><img src="assets/demos/thumb07.jpg" alt="Example 7"></button>
+            <button class="demo-thumb" data-src="assets/demos/demo08.mp4" data-poster="assets/demos/thumb08.jpg" aria-label="Example 8"><img src="assets/demos/thumb08.jpg" alt="Example 8"></button>
+        </div>
+    </div>
+
+    <!-- ============ REFERRING SEGMENTATION ============ -->
+    <div class="card">
+        <h2>Native Vision-Language Alignment</h2>
+        <p style="margin-top:-2px;">Given a natural-language expression, <span class="model-name">GenCeption</span> accurately segments the referred object — reasoning about colors, spatial relationships and motion — and generalizes to unseen objects (e.g., a rocket) by leveraging knowledge from text-to-video pre-training.</p>
+        <div class="fig-container">
+            <video controls disablepictureinpicture autoplay muted loop playsinline preload="auto" style="width:100%; display:block; border-radius:12px;">
+                <source src="assets/segmentation.mp4" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+    </div>
+
+    <!-- ============ 3D KEYPOINT ESTIMATION ============ -->
+    <div class="card" id="kp-section">
+        <h2>Understanding the Complex Visual World</h2>
+        <p style="margin-top:-2px;">As an example of pushing the boundaries of understanding the complex visual world, <span class="model-name">GenCeption</span> predicts 4D human keypoints under challenging conditions (complex motion, occlusion, ego-centric, multi-view, etc.) — robust 4D human understanding that underpins real-world applications across robotics and AR/VR.</p>
+        <div class="fig-container" style="padding:0; overflow:hidden;">
+            <video id="kp-video" controls disablepictureinpicture autoplay muted loop playsinline preload="auto"
+                   poster="assets/keypoint/kp_cat_fullbody.jpg" style="width:100%; display:block;">
+                <source id="kp-source" src="assets/keypoint/kp_cat_fullbody.mp4" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+        <div class="kp-thumbs" id="kp-thumbs">
+            <button class="kp-thumb selected" data-src="assets/keypoint/kp_cat_fullbody.mp4" data-poster="assets/keypoint/kp_cat_fullbody.jpg"><img src="assets/keypoint/kp_cat_fullbody.jpg" alt="Complex Motion"><span class="kp-thumb-label">Complex Motion</span></button>
+            <button class="kp-thumb" data-src="assets/keypoint/kp_cat_occlusion.mp4" data-poster="assets/keypoint/kp_cat_occlusion.jpg"><img src="assets/keypoint/kp_cat_occlusion.jpg" alt="Occlusion"><span class="kp-thumb-label">Occlusion</span></button>
+            <button class="kp-thumb" data-src="assets/keypoint/kp_cat_ego.mp4" data-poster="assets/keypoint/kp_cat_ego.jpg"><img src="assets/keypoint/kp_cat_ego.jpg" alt="Ego-centric"><span class="kp-thumb-label">Ego-centric</span></button>
+            <button class="kp-thumb" data-src="assets/keypoint/kp_cat_multiview.mp4" data-poster="assets/keypoint/kp_cat_multiview.jpg"><img src="assets/keypoint/kp_cat_multiview.jpg" alt="Multi-view"><span class="kp-thumb-label">Multi-view</span></button>
+        </div>
+    </div>
+
+    <!-- ============ 3D RECONSTRUCTION ============ -->
+    <div class="card" id="td-section">
+        <h2>Grounded 4D Reconstruction</h2>
+        <p style="margin-top:-2px;">From a single video, <span class="model-name">GenCeption</span> predicts per-pixel geometry and camera pose that lift the scene into a 4D point cloud — enabling free-viewpoint fly-throughs and language grounding of objects from a text instruction.</p>
+        <div class="fig-container" style="padding:0; overflow:hidden;">
+            <video id="td-video" controls disablepictureinpicture autoplay muted loop playsinline preload="auto"
+                   poster="assets/3d/kitchen.jpg" style="width:100%; display:block;">
+                <source id="td-source" src="assets/3d/kitchen.mp4" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+        <div class="kp-thumbs" id="td-thumbs">
+            <button class="kp-thumb selected" data-src="assets/3d/kitchen.mp4" data-poster="assets/3d/kitchen.jpg"><img src="assets/3d/kitchen.jpg" alt="Kitchen"><span class="kp-thumb-label">Kitchen</span></button>
+            <button class="kp-thumb" data-src="assets/3d/office.mp4" data-poster="assets/3d/office.jpg"><img src="assets/3d/office.jpg" alt="Office"><span class="kp-thumb-label">Office</span></button>
+            <button class="kp-thumb" data-src="assets/3d/race_car.mp4" data-poster="assets/3d/race_car.jpg"><img src="assets/3d/race_car.jpg" alt="Race Car"><span class="kp-thumb-label">Race Car</span></button>
+            <button class="kp-thumb" data-src="assets/3d/big_sur.mp4" data-poster="assets/3d/big_sur.jpg"><img src="assets/3d/big_sur.jpg" alt="Big Sur"><span class="kp-thumb-label">Big Sur</span></button>
+        </div>
+    </div>
+
+    <!-- ============ EMERGENT BEHAVIORS ============ -->
+    <div class="card" id="emergent-section">
+        <h2>Emergent Behaviors</h2>
+        <p style="margin-top:-2px;">Although fine-tuned predominantly on synthetic human videos, <span class="model-name">GenCeption</span> transfers seamlessly from simulation to real footage and to out-of-distribution categories — evidence of a universal "world model" inside generative video backbones.</p>
+        <div class="rpanel active" data-epanel="s2r">
+            <div class="fig-container">
+                <video muted loop playsinline controls disablepictureinpicture preload="none" poster="assets/emergent_sim2real.jpg" data-src="assets/emergent_sim2real.mp4" style="width:100%; display:block; border-radius:10px;"></video>
+                <div class="fig-caption" style="margin-top:8px;">Trained purely on synthetic videos, the model transfers <b>zero-shot to real-world footage</b> — seamless sim-to-real transfer.</div>
+            </div>
+        </div>
+        <div class="rpanel" data-epanel="multi">
+            <div class="fig-container">
+                <video muted loop playsinline controls disablepictureinpicture preload="none" poster="assets/emergent_multipeople.jpg" data-src="assets/emergent_multipeople.mp4" style="width:100%; display:block; border-radius:10px;"></video>
+                <div class="fig-caption" style="margin-top:8px;">Trained on synthetic single-object videos, the model generalizes zero-shot to real videos with <b>multiple instances</b>.</div>
+            </div>
+        </div>
+        <div class="rpanel" data-epanel="ood">
+            <div class="fig-container">
+                <video muted loop playsinline controls disablepictureinpicture preload="none" poster="assets/emergent_animals.jpg" data-src="assets/emergent_animals.mp4" style="width:100%; display:block; border-radius:10px;"></video>
+                <div class="fig-caption" style="margin-top:8px;">Trained only on humans, it generalizes to <b>unseen categories</b> — animals and robots.</div>
+            </div>
+        </div>
+        <div class="kp-thumbs thumbs-sm">
+            <button class="kp-thumb selected" data-etab="s2r"><img src="assets/emergent_sim2real.jpg" alt="Sim-to-Real Transfer"><span class="kp-thumb-label">Sim-to-Real Transfer</span></button>
+            <button class="kp-thumb" data-etab="multi"><img src="assets/emergent_multipeople.jpg" alt="Multiple Instances"><span class="kp-thumb-label">Multiple Instances</span></button>
+            <button class="kp-thumb" data-etab="ood"><img src="assets/emergent_animals.jpg" alt="Unseen Categories"><span class="kp-thumb-label">Unseen Categories</span></button>
+        </div>
+    </div>
+
+    <!-- ============ CITATION ============ -->
+    <div class="card citation">
+        <h2>Citation</h2>
+        <pre><code>@inproceedings{wang2026genception,
+  title     = {Video Generation Models are General-Purpose Vision Learners},
+  author    = {Wang, Letian and Zhang, Chuhan and Kabra, Rishabh and Uijlings, Jasper and
+               Waslander, Steven and Zisserman, Andrew and Carreira, Joao and He, Kaiming and
+               Andriluka, Misha and Bazavan, Eduard Gabriel and Zanfir, Andrei and Sminchisescu, Cristian},
+  booktitle = {European Conference on Computer Vision (ECCV)},
+  year      = {2026}
+}</code></pre>
+    </div>
+
+    <!-- ============ ACKNOWLEDGEMENTS ============ -->
+    <div class="card">
+        <h2>Acknowledgements</h2>
+        <p style="font-size:0.9em;">The following acknowledgements are not exhaustive. We are also grateful to many others whose support, feedback, and discussions contributed to this work but who are not individually acknowledged here.</p>
+        <p style="font-size:0.9em;">We are deeply grateful to Jeremiah Harmsen, Jo&euml;lle Barral, Chris Dyer, Rahul Sukthankar, Junlin Zhang, Miki Rubinstein, Thabo Beeler, Di Qiu, Jesús Pérez, Alberto García García, Sergio Orts Escolano, Erroll Wood, Iker J. de los Mozos, and Emily Conn for their invaluable support throughout this project.</p>
+        <p style="font-size:0.9em;">We also thank the following individuals (listed alphabetically by last name) for insightful research discussions, technical feedback, and valuable conversations on implementation details: Thiemo Alldieck, Yanrui Bin, Ang Cao, Minghao Chen, Carlton Chu, Dima Damen, Shlomi Fruchter, Valentin Gabeur, Robert Geirhos, Tengda Han, Sicong Jiang, Zeren Jiang, Linyi Jin, Ruofan Liang, Ziwei Liao, Haotong Lin, Xingchao Liu, Yibo Liu, Shangbang Long, Viorica Patraucean, Cordelia Schmid, Hao Shao, Jianyuan Wang, Luyu Wang, Thadd&auml;us Wiedemer, Ziyi Wu, Yuxi Xiao, Junyu Xie, Wei Yu, Shangzhan Zhang, and Shuhong Zheng.</p>
+    </div>
+
+    <p style="text-align:center; font-size: 0.8em; color: #5f6368; margin-top: 40px;">
+        Project page for &ldquo;Video Generation Models are General-Purpose Vision Learners.&rdquo;
+    </p>
+
+    <script>
+        // Overview teaser: sound on/off toggle button.
+        (function () {
+            var v = document.getElementById('teaser-video');
+            var btn = document.getElementById('teaser-mute');
+            if (!v || !btn) return;
+            var icoMuted = btn.querySelector('.ico-muted');
+            var icoOn = btn.querySelector('.ico-on');
+            function sync() {
+                icoMuted.style.display = v.muted ? 'block' : 'none';
+                icoOn.style.display = v.muted ? 'none' : 'block';
+            }
+            btn.addEventListener('click', function () {
+                v.muted = !v.muted;
+                if (!v.muted) { v.play().catch(function () {}); }
+                sync();
+            });
+            v.addEventListener('volumechange', sync);
+            sync();
+        })();
+
+        // Collapsible sections: click the heading to toggle.
+        document.querySelectorAll('.collapsible h2').forEach(function (h) {
+            h.addEventListener('click', function () {
+                h.parentElement.classList.toggle('active');
+            });
+        });
+
+        // Video Any-Task Capabilities: click a thumbnail to load & play that clip.
+        (function () {
+            var video = document.getElementById('demo-video');
+            var source = document.getElementById('demo-source');
+            if (!video || !source) return;
+            document.querySelectorAll('#demo-thumbs .demo-thumb').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    document.querySelectorAll('#demo-thumbs .demo-thumb').forEach(function (b) {
+                        b.classList.remove('selected');
+                    });
+                    btn.classList.add('selected');
+                    video.poster = btn.dataset.poster;
+                    source.src = btn.dataset.src;
+                    video.load();
+                    video.play().catch(function () { /* autoplay may be blocked; controls remain */ });
+                });
+            });
+        })();
+
+        // Results: switch between SOTA-performance and data-efficiency tabs.
+        (function () {
+            var section = document.querySelector('.card.results');
+            if (!section) return;
+            var tabs = section.querySelectorAll('.kp-thumb');
+            var panels = section.querySelectorAll('.rpanel');
+            tabs.forEach(function (t) {
+                t.addEventListener('click', function () {
+                    tabs.forEach(function (x) { x.classList.toggle('selected', x === t); });
+                    panels.forEach(function (p) { p.classList.toggle('active', p.dataset.rpanel === t.dataset.rtab); });
+                });
+            });
+        })();
+
+        // Emergent Behaviors: tabbed panels, lazy-load + play only the active video.
+        (function () {
+            var section = document.getElementById('emergent-section');
+            if (!section) return;
+            var tabs = section.querySelectorAll('.kp-thumb');
+            var panels = section.querySelectorAll('.rpanel');
+            function activate(key) {
+                tabs.forEach(function (t) { t.classList.toggle('selected', t.dataset.etab === key); });
+                panels.forEach(function (p) {
+                    var on = p.dataset.epanel === key;
+                    p.classList.toggle('active', on);
+                    var v = p.querySelector('video');
+                    if (v) {
+                        if (on) { if (!v.src) { v.src = v.dataset.src; v.load(); } v.play().catch(function () {}); }
+                        else { v.pause(); }
+                    }
+                });
+            }
+            tabs.forEach(function (t) { t.addEventListener('click', function () { activate(t.dataset.etab); }); });
+            activate('s2r');
+        })();
+
+        // 3D Reconstruction: click a scene thumbnail to load & play that clip.
+        (function () {
+            var video = document.getElementById('td-video');
+            var source = document.getElementById('td-source');
+            if (!video || !source) return;
+            document.querySelectorAll('#td-thumbs .kp-thumb').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    document.querySelectorAll('#td-thumbs .kp-thumb').forEach(function (b) { b.classList.remove('selected'); });
+                    btn.classList.add('selected');
+                    video.poster = btn.dataset.poster;
+                    source.src = btn.dataset.src;
+                    video.load();
+                    video.play().catch(function () {});
+                });
+            });
+        })();
+
+        // 3D Keypoint Estimation: click a preview thumbnail to load & play that clip.
+        (function () {
+            var video = document.getElementById('kp-video');
+            var source = document.getElementById('kp-source');
+            if (!video || !source) return;
+            document.querySelectorAll('#kp-thumbs .kp-thumb').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    document.querySelectorAll('#kp-thumbs .kp-thumb').forEach(function (b) {
+                        b.classList.remove('selected');
+                    });
+                    btn.classList.add('selected');
+                    video.poster = btn.dataset.poster;
+                    source.src = btn.dataset.src;
+                    video.load();
+                    video.play().catch(function () {});
+                });
+            });
+        })();
+    </script>
+
+    <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "925bfd5a751947c2994693c2ef1bbd2c"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>
